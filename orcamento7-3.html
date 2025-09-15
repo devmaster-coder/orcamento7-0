@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Gerador de Orçamento</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    input, textarea, select { width: 100%; margin: 5px 0; padding: 8px; }
+    .item { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; position: relative; }
+    .remove-btn { position: absolute; top: 5px; right: 5px; background-color: red; color: white; border: none; padding: 5px; cursor: pointer; }
+    button { padding: 10px 15px; margin-top: 10px; background-color: #0077b6; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #023e8a; }
+    #campoOutroTipo { display: none; }
+    small { color: #555; }
+
+    .container {
+      max-width: 800px;
+      margin: auto;
+      padding: 20px;
+      border: 1px solid #ccc;}
+
+     .nomeEmpresa{
+      max-width: 70%;
+      box-sizing: border-box;
+      padding: 8px;
+      border: 1px solid #ccc;
+      }
+      
+      .textarea-limit {
+        max-width: 81%;
+        white-space: wrap;
+        word-wrap: break-word;
+        box-sizing: border-box;
+        padding: 8px;
+        border: 1px solid #ccc;
+
+      }
+      </style>
+</head>
+<body>
+  <div class="container">
+
+  <h1>Gerador de Orçamento</h1>
+
+  <label>📌 Logotipo da Empresa:</label>
+  <input type="file" id="logoInput" accept="image/*">
+  <small>Dica: Use imagens de até <strong>300x300px</strong> para melhor visualização no PDF.</small>
+
+  <h2>Tipo de Orçamento</h2>
+  <select id="tipoOrcamento" onchange="verificarOutroTipo()">
+    <option value="ORÇAMENTO DE MATERIAIS">ORÇAMENTO DE MATERIAIS</option>
+    <option value="ORÇAMENTO DE MÃO DE OBRA">ORÇAMENTO DE MÃO DE OBRA</option>
+    <option value="ORÇAMENTO DE MÃO DE OBRA E MATERIAIS">ORÇAMENTO DE MÃO DE OBRA E MATERIAIS</option>
+    <option value="Outro">Outro (escreva abaixo)</option>
+  </select>
+  <div id="campoOutroTipo">
+    <input type="text" id="tipoPersonalizado" placeholder="Digite o tipo de orçamento">
+  </div>
+
+  
+  <h2>Dados da Empresa</h2>
+  <input type="text" id="nomeEmpresa" placeholder="Nome da Empresa" maxlength="42" class="nomeEmpresa">
+  <input type="text" id="cpfCnpjEmpresa" placeholder="CPF ou CNPJ" maxlength="18">
+  <input type="tel" id="telefoneEmpresa" placeholder="Telefone">
+  <input type="email" id="emailEmpresa" placeholder="Email">
+  
+
+  <h2>Dados do Cliente</h2>
+  <input type="text" id="nomeCliente" placeholder="Nome do Cliente">
+  <input type="text" id="cpfCnpjCliente" placeholder="CPF ou CNPJ">
+  <input type="tel" id="telefoneCliente" placeholder="Telefone">
+  <input type="email" id="emailCliente" placeholder="Email">
+  <textarea id="enderecoCliente" placeholder="Endereço completo"></textarea>
+
+  <h2>Data e Validade</h2>
+  <input type="date" id="dataOrcamento">
+  <input type="number" id="validadeOrcamento" placeholder="Validade (em dias)">
+
+  <h2>Itens</h2>
+  <div id="itensContainer"></div>
+  <button onclick="adicionarItem()">Adicionar Item</button>
+
+  <h2>Observações</h2>
+  <br>
+  <textarea id="observacoes" class="textarea-limit" rows="4"></textarea>
+
+  <button onclick="gerarPDF()">Gerar PDF</button>
+  <button onclick="paginaInicial()">Página Inicial</button>
+  </div>
+
+  <script>
+    function verificarOutroTipo() {
+      const tipo = document.getElementById('tipoOrcamento').value;
+      document.getElementById('campoOutroTipo').style.display = tipo === "Outro" ? "block" : "none";
+    }
+
+    function adicionarItem() {
+      const container = document.getElementById('itensContainer');
+      const itemDiv = document.createElement('div');
+      itemDiv.className = 'item';
+      itemDiv.innerHTML = `
+        <button class="remove-btn" onclick="this.parentElement.remove()">X</button>
+        <input type="text" placeholder="Descrição" class="descricao">
+        <input type="number" placeholder="Quantidade" class="quantidade">
+        <input type="number" placeholder="Preço Unitário" class="preco">
+      `;
+      container.appendChild(itemDiv);
+    }
+
+    async function gerarPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      const tipoSelecionado = document.getElementById('tipoOrcamento').value;
+      const tipoFinal = tipoSelecionado === "Outro"
+        ? document.getElementById('tipoPersonalizado').value || "ORÇAMENTO"
+        : tipoSelecionado;
+
+      let y = 20;
+
+      // Logotipo
+      const logoInput = document.getElementById('logoInput');
+      if (logoInput.files.length > 0) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          doc.addImage(e.target.result, 'PNG', 150, 10, 40, 40);
+          gerarConteudo();
+        };
+        reader.readAsDataURL(logoInput.files[0]);
+      } else {
+        gerarConteudo();
+      }
+
+      function gerarConteudo() {
+        doc.setFontSize(16);
+        doc.text(tipoFinal, 10, y);
+        y += 10;
+
+        doc.setFontSize(12);
+        doc.text(`Empresa: ${document.getElementById('nomeEmpresa').value}`, 10, y);
+        doc.text(`CPF/CNPJ: ${document.getElementById('cpfCnpjEmpresa').value}`, 10, y + 6);
+        doc.text(`Telefone: ${document.getElementById('telefoneEmpresa').value}`, 10, y + 12);
+        doc.text(`Email: ${document.getElementById('emailEmpresa').value}`, 10, y + 18);
+        y += 30;
+
+        doc.text(`Cliente: ${document.getElementById('nomeCliente').value}`, 10, y);
+        doc.text(`CPF/CNPJ: ${document.getElementById('cpfCnpjCliente').value}`, 10, y + 6);
+        doc.text(`Telefone: ${document.getElementById('telefoneCliente').value}`, 10, y + 12);
+        doc.text(`Email: ${document.getElementById('emailCliente').value}`, 10, y + 18);
+        doc.text(`Endereço: ${document.getElementById('enderecoCliente').value}`, 10, y + 24);
+        y += 40;
+
+        const dataBr = new Date(document.getElementById('dataOrcamento').value).toLocaleDateString('pt-BR');
+        doc.text(`Data do Orçamento: ${dataBr}`, 10, y);
+        doc.text(`Validade: ${document.getElementById('validadeOrcamento').value} dias`, 150, y);
+        y += 10;
+
+        const itens = [];
+        const itemDivs = document.querySelectorAll('.item');
+        let contador = 1;
+        itemDivs.forEach(div => {
+          const descricao = div.querySelector('.descricao').value;
+          const quantidade = parseInt(div.querySelector('.quantidade').value);
+          const preco = parseFloat(div.querySelector('.preco').value);
+          if (descricao && !isNaN(quantidade) && !isNaN(preco)) {
+            const subtotal = quantidade * preco;
+            itens.push([
+  `${contador}. ${descricao}`,
+  quantidade,
+  preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+  subtotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })]);
+            contador++;
+          }
+        });
+
+        doc.autoTable({
+          startY: y + 10,
+          head: [['Descrição', 'Quantidade', 'Preço Unitário', 'Subtotal']],
+          body: itens,
+          theme: 'grid'
+        });
+
+        const total = itens.reduce((acc, item) => {
+  // Remove "R$", remove pontos dos milhares, troca vírgula por ponto
+  const valor = parseFloat(
+    item[3]
+      .replace('R$', '')
+      .replace(/\./g, '')
+      .replace(',', '.')
+      .trim()
+  );
+  return acc + valor;
+}, 0);
+
+        const totalFormatado = total.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        doc.text(`Total: ${totalFormatado}`, 10, doc.lastAutoTable.finalY + 10);
+
+        // Define posição inicial após a tabela
+let yObs = doc.lastAutoTable.finalY + 20;
+
+// Título "Observações:"
+doc.setFont('helvetica', 'bold');
+doc.setFontSize(12);
+doc.text('Observações:', 10, yObs);
+
+// Prepara o texto com quebra automática
+const textoOriginal = document.getElementById('observacoes').value || '';
+const textoQuebrado = doc.splitTextToSize(textoOriginal, 205); // largura máxima em mm
+
+// Espaço entre título e texto
+yObs += 10;
+
+// Texto das observações
+doc.setFont('helvetica', 'normal');
+doc.setFontSize(10);
+doc.text(textoQuebrado, 10, yObs);
+
+        doc.save('orcamento.pdf');
+      }
+    }
+    function paginaInicial() {
+      window.location.href = "/pagina_inicial/index.html";
+    }
+  </script>
+
+</body
